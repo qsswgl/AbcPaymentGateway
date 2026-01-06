@@ -257,4 +257,100 @@ public class AbcPaymentService
         var signedData = SignRequestData(data);
         return await SendToAbcAsync(signedData);
     }
+
+    /// <summary>
+    /// 处理微信支付请求
+    /// </summary>
+    /// <remarks>
+    /// 通过农行综合收银台 API 进行微信支付
+    /// 流程：
+    /// 1. APP 调用此方法创建微信支付订单
+    /// 2. 农行系统生成 prepay_id
+    /// 3. 返回微信 SDK 所需的签名参数
+    /// 4. APP 使用这些参数调用微信原生 SDK 发起支付
+    /// </remarks>
+    public async Task<PaymentResponse> ProcessWeChatPaymentAsync(PaymentRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("开始处理微信支付请求: OrderNo={OrderNo}, Amount={Amount}, OpenId={OpenId}", 
+                request.OrderNo, request.OrderAmount, request.OpenId);
+
+            // 构建微信支付请求数据
+            var requestData = BuildWeChatRequestData(request);
+
+            // 签名请求数据
+            var signedData = SignRequestData(requestData);
+
+            // 发送到农行支付平台
+            var response = await SendToAbcAsync(signedData);
+
+            _logger.LogInformation("微信支付请求完成: OrderNo={OrderNo}, ResponseCode={ResponseCode}", 
+                request.OrderNo, response.ResponseCode);
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "处理微信支付请求失败: OrderNo={OrderNo}", request.OrderNo);
+            return new PaymentResponse
+            {
+                ResponseCode = "9999",
+                ResponseMessage = $"系统错误: {ex.Message}",
+                OrderNo = request.OrderNo
+            };
+        }
+    }
+
+    /// <summary>
+    /// 构建微信支付请求数据
+    /// </summary>
+    private Dictionary<string, string> BuildWeChatRequestData(PaymentRequest request)
+    {
+        var data = new Dictionary<string, string>
+        {
+            ["TrxType"] = "WeChatAppPayReq",
+            ["OrderNo"] = request.OrderNo,
+            ["OrderAmount"] = request.OrderAmount,
+            ["MerchantID"] = _config.MerchantIds.FirstOrDefault() ?? "",
+            ["OrderTime"] = request.OrderTime ?? DateTime.Now.ToString("yyyyMMddHHmmss")
+        };
+
+        // 添加微信支付特定字段
+        if (!string.IsNullOrEmpty(request.OpenId))
+            data["OpenId"] = request.OpenId;
+        
+        if (!string.IsNullOrEmpty(request.ClientIP))
+            data["ClientIP"] = request.ClientIP;
+        
+        if (!string.IsNullOrEmpty(request.SceneInfo))
+            data["SceneInfo"] = request.SceneInfo;
+        
+        if (!string.IsNullOrEmpty(request.GoodsId))
+            data["GoodsId"] = request.GoodsId;
+        
+        if (request.GoodsQuantity.HasValue)
+            data["GoodsQuantity"] = request.GoodsQuantity.Value.ToString();
+        
+        if (!string.IsNullOrEmpty(request.Attach))
+            data["Attach"] = request.Attach;
+        
+        if (!string.IsNullOrEmpty(request.Detail))
+            data["Detail"] = request.Detail;
+
+        // 添加公共字段
+        if (!string.IsNullOrEmpty(request.OrderDesc))
+            data["OrderDesc"] = request.OrderDesc;
+        
+        if (!string.IsNullOrEmpty(request.ProductName))
+            data["ProductName"] = request.ProductName;
+        
+        if (!string.IsNullOrEmpty(request.ResultNotifyURL))
+            data["ResultNotifyURL"] = request.ResultNotifyURL;
+        
+        if (!string.IsNullOrEmpty(request.OrderValidTime))
+            data["OrderValidTime"] = request.OrderValidTime;
+
+        return data;
+    }
 }
