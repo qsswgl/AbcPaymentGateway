@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  payment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: payment-gateway-aot:latest
+    container_name: payment-gateway
+    restart: unless-stopped
+    networks:
+      - traefik-net
+    volumes:
+      # 挂载证书目录（调整为服务器路径）
+      - /opt/certs/cert:/app/cert:ro
+      # 挂载日志目录
+      - ./logs:/app/logs
+      # 挂载 Web 目录（Swagger 文档）
+      - ./Web:/app/Web:ro
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - TZ=Asia/Shanghai
+    labels:
+      # 容器标签：payment (供 Traefik 识别)
+      - "com.docker.compose.service=payment"
+      
+      # Traefik 标签配置
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      
+      # HTTP 路由：通过 HTTP 访问
+      - "traefik.http.routers.payment.rule=Host(`payment.qsgl.net`)"
+      - "traefik.http.routers.payment.entrypoints=web,websecure"
+      
+      # TLS 配置：使用动态证书（/etc/traefik/dynamic/payment-certs.yml）
+      - "traefik.http.routers.payment.tls=true"
+      
+      # 服务配置：指定后端服务地址和端口
+      - "traefik.http.services.payment.loadbalancer.server.port=8080"
+      - "traefik.http.services.payment.loadbalancer.server.scheme=http"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  traefik-net:
+    external: true

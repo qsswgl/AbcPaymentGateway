@@ -1,0 +1,72 @@
+### 测试扫码支付接口
+
+POST https://payment.qsgl.net/api/payment/qrcode
+Content-Type: application/json
+
+{
+  "orderNo": "ORDER20260106001",
+  "orderAmount": "1000",
+  "orderDesc": "测试商品购买",
+  "payQRCode": "134567890123456789",
+  "resultNotifyURL": "https://your-domain.com/callback",
+  "orderValidTime": "20260107120000"
+}
+
+###
+
+### 测试电子钱包支付接口
+
+POST https://payment.qsgl.net/api/payment/ewallet
+Content-Type: application/json
+
+{
+  "orderNo": "ORDER20260106002",
+  "orderAmount": "2000",
+  "token": "TEST_TOKEN_123456",
+  "productName": "账户充值",
+  "orderDesc": "充值测试",
+  "resultNotifyURL": "https://your-domain.com/callback"
+}
+
+###
+
+### 查询订单状态
+
+GET https://payment.qsgl.net/api/payment/query/ORDER20260106001
+
+###
+
+### 健康检查
+
+GET https://payment.qsgl.net/api/payment/health
+
+###
+
+### 本地测试（开发环境）
+
+### 本地扫码支付
+
+POST http://localhost:5000/api/payment/qrcode
+Content-Type: application/json
+
+{
+  "orderNo": "LOCAL_ORDER_001",
+  "orderAmount": "100",
+  "orderDesc": "本地测试",
+  "payQRCode": "134567890123456789",
+  "resultNotifyURL": "http://localhost:3000/callback"
+}
+
+###
+
+### 本地健康检查
+
+GET http://localhost:5000/api/payment/health
+
+###
+
+### 本地查询订单
+
+GET http://localhost:5000/api/payment/query/LOCAL_ORDER_001
+
+###

@@ -1,0 +1,607 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "农行支付网关 API",
+    "version": "1.0.0",
+    "description": "农行综合收银台支付网关接口服务",
+    "contact": {
+      "name": "技术支持",
+      "email": "support@qsgl.net"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://payment.qsgl.net",
+      "description": "生产环境"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "本地开发环境"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "健康检查接口"
+    },
+    {
+      "name": "Utility",
+      "description": "实用工具接口"
+    },
+    {
+      "name": "API Info",
+      "description": "API 信息接口"
+    },
+    {
+      "name": "Payment",
+      "description": "支付接口 - 农行综合收银台支付服务"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "获取 API 服务信息",
+        "description": "返回 API 的基本信息，包括名称、版本、运行状态等",
+        "tags": ["API Info"],
+        "operationId": "getRoot",
+        "responses": {
+          "200": {
+            "description": "成功获取 API 信息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "example": "农行支付网关 API",
+                      "description": "API 名称"
+                    },
+                    "version": {
+                      "type": "string",
+                      "example": "1.0",
+                      "description": "API 版本"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "running",
+                      "description": "API 运行状态"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-01-06T14:30:00.1234567Z",
+                      "description": "响应时间戳 (ISO 8601 格式)"
+                    },
+                    "environment": {
+                      "type": "string",
+                      "example": "Production",
+                      "description": "运行环境"
+                    }
+                  },
+                  "required": ["name", "version", "status", "timestamp"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "健康检查端点",
+        "description": "返回应用的健康状态，包括运行时间等。此端点由 Docker healthcheck 和监控系统使用。",
+        "tags": ["Health"],
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "应用健康",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "healthy",
+                      "enum": ["healthy", "degraded", "unhealthy"],
+                      "description": "健康状态"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-01-06T14:30:00.1234567Z",
+                      "description": "响应时间戳 (ISO 8601 格式)"
+                    },
+                    "uptime": {
+                      "type": "integer",
+                      "example": 3600,
+                      "description": "应用运行时间（秒）"
+                    }
+                  },
+                  "required": ["status", "timestamp", "uptime"]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "应用不健康",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "unhealthy"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Critical dependencies unavailable"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ping": {
+      "get": {
+        "summary": "Ping 测试端点",
+        "description": "简单的 Ping 测试端点，用于验证 API 连接是否正常。响应固定为 'pong'。",
+        "tags": ["Utility"],
+        "operationId": "getPing",
+        "responses": {
+          "200": {
+            "description": "Ping 成功",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "pong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/qrcode": {
+      "post": {
+        "summary": "创建支付订单 - 扫码支付",
+        "description": "使用 QR 码方式创建支付订单。客户端将使用返回的二维码进行支付。",
+        "tags": ["Payment"],
+        "operationId": "createQRCodePayment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "支付订单创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误或支付处理失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/ewallet": {
+      "post": {
+        "summary": "创建支付订单 - 电子钱包支付",
+        "description": "使用电子钱包方式创建支付订单。支持各类农行电子钱包支付。",
+        "tags": ["Payment"],
+        "operationId": "createEWalletPayment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "支付订单创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误或支付处理失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/query/{orderNo}": {
+      "get": {
+        "summary": "查询订单状态",
+        "description": "根据订单号查询支付订单的当前状态。支持查询支付进度、结果等信息。",
+        "tags": ["Payment"],
+        "operationId": "queryOrder",
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "description": "订单号，唯一标识一个支付订单",
+            "schema": {
+              "type": "string",
+              "example": "ORD20260106001"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "订单查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "订单号为空或格式错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "订单不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/notify": {
+      "post": {
+        "summary": "支付回调接口",
+        "description": "农行支付系统向商户服务器回调的接口。当支付完成后，农行会向此端点发送回调通知。接收方需验证签名并更新订单状态。",
+        "tags": ["Payment"],
+        "operationId": "paymentNotify",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "description": "农行支付回调数据（原始表单格式）",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "回调处理成功，返回 SUCCESS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "SUCCESS"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "回调数据格式错误或签名验证失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "FAIL"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/health": {
+      "get": {
+        "summary": "支付服务健康检查",
+        "description": "检查支付服务的健康状态。用于确保支付服务正常运行。",
+        "tags": ["Payment"],
+        "operationId": "paymentHealth",
+        "responses": {
+          "200": {
+            "description": "支付服务健康",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "healthy"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-01-06T14:30:00.1234567Z"
+                    },
+                    "service": {
+                      "type": "string",
+                      "example": "ABC Payment Gateway"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiInfo": {
+        "type": "object",
+        "description": "API 服务信息",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "服务名称"
+          },
+          "version": {
+            "type": "string",
+            "description": "API 版本"
+          },
+          "status": {
+            "type": "string",
+            "description": "运行状态"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "时间戳"
+          }
+        }
+      },
+      "HealthStatus": {
+        "type": "object",
+        "description": "健康状态响应",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "degraded", "unhealthy"],
+            "description": "健康状态"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "响应时间戳"
+          },
+          "uptime": {
+            "type": "integer",
+            "description": "运行时间（秒）"
+          }
+        }
+      },
+      "PaymentRequest": {
+        "type": "object",
+        "required": ["orderNo", "amount", "merchantId", "goodsName"],
+        "description": "支付请求对象",
+        "properties": {
+          "orderNo": {
+            "type": "string",
+            "description": "订单号，商户系统内唯一",
+            "example": "ORD20260106001"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "description": "支付金额，单位：元",
+            "example": 100.00
+          },
+          "merchantId": {
+            "type": "string",
+            "description": "商户 ID，由农行分配",
+            "example": "103881636900016"
+          },
+          "goodsName": {
+            "type": "string",
+            "description": "商品名称/订单描述",
+            "example": "商品购买"
+          },
+          "notifyUrl": {
+            "type": "string",
+            "description": "支付回调地址，支付完成后农行会向此地址发送回调通知",
+            "example": "https://example.com/api/payment/notify"
+          },
+          "returnUrl": {
+            "type": "string",
+            "description": "返回地址，支付完成后重定向到此地址",
+            "example": "https://example.com/payment/result"
+          },
+          "remarks": {
+            "type": "string",
+            "description": "备注信息（可选）",
+            "example": "订单备注"
+          }
+        }
+      },
+      "PaymentResponse": {
+        "type": "object",
+        "description": "支付响应对象",
+        "properties": {
+          "isSuccess": {
+            "type": "boolean",
+            "description": "是否成功",
+            "example": true
+          },
+          "orderNo": {
+            "type": "string",
+            "description": "订单号",
+            "example": "ORD20260106001"
+          },
+          "transactionId": {
+            "type": "string",
+            "description": "农行交易流水号",
+            "example": "2026010600000001"
+          },
+          "status": {
+            "type": "string",
+            "description": "订单状态：PENDING（待支付）、SUCCESS（已支付）、FAILED（已失败）、EXPIRED（已过期）",
+            "enum": ["PENDING", "SUCCESS", "FAILED", "EXPIRED"],
+            "example": "PENDING"
+          },
+          "qrCode": {
+            "type": "string",
+            "description": "二维码内容（仅扫码支付返回，Base64 或文本）",
+            "example": "https://payment.abc.com/scan/1234567890"
+          },
+          "redirectUrl": {
+            "type": "string",
+            "description": "跳转 URL（部分支付方式返回）",
+            "example": "https://payment.abc.com/pay?orderNo=ORD20260106001"
+          },
+          "message": {
+            "type": "string",
+            "description": "返回信息",
+            "example": "支付订单创建成功"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "响应时间戳",
+            "example": "2026-01-06T14:30:00.1234567Z"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "错误响应对象",
+        "properties": {
+          "isSuccess": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "description": "错误信息",
+            "example": "支付处理失败"
+          },
+          "errorCode": {
+            "type": "string",
+            "description": "错误代码",
+            "example": "PAYMENT_ERROR"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "错误发生时间戳",
+            "example": "2026-01-06T14:30:00.1234567Z"
+          }
+        }
+      }
+    }
+  }
+}

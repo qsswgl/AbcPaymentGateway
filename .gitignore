@@ -1,0 +1,61 @@
+# 忽略编译输出
+bin/
+obj/
+out/
+
+# 忽略用户特定文件
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# 忽略 Visual Studio Code
+.vscode/
+.vs/
+
+# 忽略日志文件
+logs/
+*.log
+
+# 忽略证书和敏感信息（不要提交到仓库）
+cert/
+*.pfx
+*.cer
+*.p12
+*.pem
+*.key
+
+# 忽略 NuGet 包
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# 忽略发布目录
+publish/
+
+# 忽略 Docker 相关
+.dockerignore
+
+# 忽略临时文件
+*.tmp
+*.temp
+*~
+
+# 忽略 macOS
+.DS_Store
+
+# 忽略环境变量文件
+.env
+.env.local
+.env.production
+
+# 忽略 IDE 文件
+*.swp
+*.swo
+.idea/
+*.iml
+
+# 忽略测试覆盖率
+coverage/
+*.coverage
