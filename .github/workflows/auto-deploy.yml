@@ -23,8 +23,15 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          # Write private key using a heredoc to preserve exact newlines and avoid echo issues
+          cat > ~/.ssh/deploy_key <<'KEY'
+${{ secrets.SSH_PRIVATE_KEY }}
+KEY
+          # Convert CRLF to LF if present (Windows-origin keys)
+          sed -i 's/\r$//' ~/.ssh/deploy_key || true
           chmod 600 ~/.ssh/deploy_key
+          # Verify key format (prints only fingerprint, not key material)
+          ssh-keygen -l -f ~/.ssh/deploy_key || true
           ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
       
       - name: Deploy code and restart service
