@@ -29,47 +29,48 @@ jobs:
       
       - name: Deploy code and restart service
         run: |
-          # Create deployment archive
-          tar -czf deploy.tar.gz --exclude='.git' --exclude='node_modules' --exclude='*.log' .
-          
+          # Create a consistent deployment archive using git archive to avoid 'file changed as we read it'
+          echo "Creating archive via git archive..."
+          git archive --format=tar HEAD | gzip > deploy.tar.gz
+
           # Upload to server
           scp -i ~/.ssh/deploy_key -P ${{ secrets.SSH_PORT || 22 }} deploy.tar.gz ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/tmp/
-          
+
           # Extract and deploy
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT || 22 }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} << 'EOF'
             set -e
             echo "=== Starting deployment ==="
-            
-            # Backup and extract
+
+            # Ensure directory exists and backup existing compose
             mkdir -p ${{ secrets.REMOTE_DIR }}
             cd ${{ secrets.REMOTE_DIR }}
-            
+
             if [ -f docker-compose.yml ]; then
               echo "Backing up existing docker-compose.yml"
-              cp docker-compose.yml /tmp/docker-compose.yml.bak
+              cp docker-compose.yml /tmp/docker-compose.yml.bak || true
             fi
-            
+
             # Extract new code
             tar -xzf /tmp/deploy.tar.gz -C ${{ secrets.REMOTE_DIR }}
-            rm /tmp/deploy.tar.gz
-            
+            rm /tmp/deploy.tar.gz || true
+
             echo "Files extracted to $(pwd)"
             ls -la
-            
+
             # Build Docker image
             echo "Building Docker image..."
             docker build -t ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
             docker tag ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} ${{ env.IMAGE_NAME }}:latest
-            
+
             # Restart services
             echo "Restarting services..."
             docker-compose up -d --force-recreate --remove-orphans
-            
+
             # Health check
             echo "Waiting for service..."
             sleep 5
             curl -fsS http://localhost:8080/health || (echo "❌ Health check failed" && exit 1)
-            
+
             echo "✅ Deployment successful!"
-            docker ps | grep payment-gateway
+            docker ps | grep payment-gateway || true
           EOF
