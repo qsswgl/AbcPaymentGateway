@@ -1,83 +1,50 @@
-name: CI Build & Direct Deploy
+name: Build Notification (Local Deploy)
 
 on:
   push:
     branches: [ master ]
   workflow_dispatch:
 
-env:
-  IMAGE_NAME: payment-gateway-jit
-  IMAGE_TAG: ${{ github.sha }}
-
-permissions:
-  contents: read
-
 jobs:
-  deploy:
-    name: Build and Deploy on Remote Server
+  notify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Setup SSH key
+
+      - name: Extract commit info
+        id: commit
         run: |
-          mkdir -p ~/.ssh
-          # Write private key using a heredoc to preserve exact newlines and avoid echo issues
-          cat > ~/.ssh/deploy_key <<'KEY'
-${{ secrets.SSH_PRIVATE_KEY }}
-KEY
-          # Convert CRLF to LF if present (Windows-origin keys)
-          sed -i 's/\r$//' ~/.ssh/deploy_key || true
-          chmod 600 ~/.ssh/deploy_key
-          # Verify key format (prints only fingerprint, not key material)
-          ssh-keygen -l -f ~/.ssh/deploy_key || true
-          ssh-keyscan -p ${{ secrets.SSH_PORT || 22 }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-      
-      - name: Deploy code and restart service
+          echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "author=${{ github.actor }}" >> $GITHUB_OUTPUT
+          echo "message=$(git log --format=%B -n 1 ${{ github.sha }})" >> $GITHUB_OUTPUT
+
+      - name: Create deployment notification
         run: |
-          # Create a consistent deployment archive using git archive to avoid 'file changed as we read it'
-          echo "Creating archive via git archive..."
-          git archive --format=tar HEAD | gzip > deploy.tar.gz
-
-          # Upload to server
-          scp -i ~/.ssh/deploy_key -P ${{ secrets.SSH_PORT || 22 }} deploy.tar.gz ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/tmp/
-
-          # Extract and deploy
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT || 22 }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} << 'EOF'
-            set -e
-            echo "=== Starting deployment ==="
-
-            # Ensure directory exists and backup existing compose
-            mkdir -p ${{ secrets.REMOTE_DIR }}
-            cd ${{ secrets.REMOTE_DIR }}
-
-            if [ -f docker-compose.yml ]; then
-              echo "Backing up existing docker-compose.yml"
-              cp docker-compose.yml /tmp/docker-compose.yml.bak || true
-            fi
-
-            # Extract new code
-            tar -xzf /tmp/deploy.tar.gz -C ${{ secrets.REMOTE_DIR }}
-            rm /tmp/deploy.tar.gz || true
-
-            echo "Files extracted to $(pwd)"
-            ls -la
-
-            # Build Docker image
-            echo "Building Docker image..."
-            docker build -t ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
-            docker tag ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} ${{ env.IMAGE_NAME }}:latest
-
-            # Restart services
-            echo "Restarting services..."
-            docker-compose up -d --force-recreate --remove-orphans
-
-            # Health check
-            echo "Waiting for service..."
-            sleep 5
-            curl -fsS http://localhost:8080/health || (echo "❌ Health check failed" && exit 1)
-
-            echo "✅ Deployment successful!"
-            docker ps | grep payment-gateway || true
+          cat << EOF
+          ========================================
+          ✅ 新版本代码已推送到 GitHub
+          ========================================
+          
+          提交信息:
+            SHA: ${{ steps.commit.outputs.sha }}
+            作者: ${{ steps.commit.outputs.author }}
+          
+          下一步操作:
+          ========================================
+          1. 在本地运行部署脚本:
+             .\build-and-deploy.ps1
+          
+          或使用自定义参数:
+             .\build-and-deploy.ps1 -RemoteHost tx.qsgl.net -RemoteUser root
+          
+          该脚本将执行以下步骤:
+            ✓ 本地编译 Docker 镜像 (Native AOT)
+            ✓ 导出镜像为 TAR 文件
+            ✓ 通过 SSH/SCP 上传到腾讯云服务器
+            ✓ 在远程服务器加载镜像、重启容器
+            ✓ 执行健康检查
+          
+          部署完成后访问: https://payment.qsgl.net
+          ========================================
           EOF
