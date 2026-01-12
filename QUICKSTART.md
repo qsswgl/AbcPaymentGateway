@@ -1,14 +1,229 @@
-# 快速开始指南
+# 🚀 快速开始部署指南
 
-本指南帮助你快速部署和使用农行支付网关 API。
+## 概览
 
-## 📋 清单
+新的**本地构建 + 远程部署方案**已部署完毕。无需再依赖 GitHub Actions SSH 认证问题，直接从本地通过 SSH/SCP 上传镜像到腾讯云服务器。
 
-部署前，请确保准备好：
+## 前置条件（已验证）
 
-- ✅ .NET 10 SDK 已安装（本地和服务器）
-- ✅ Docker 和 Docker Compose 已安装（服务器）
-- ✅ 农行商户证书（.pfx 文件）
+✅ SSH 私钥: `K:\Key\tx.qsgl.net_id_ed25519`  
+✅ 网络连接: 可达 `tx.qsgl.net`  
+✅ 远程服务器: 已装有 Docker & Docker Compose  
+✅ 部署目录: `/opt/payment-gateway` (已配置 Traefik)
+
+## 📋 部署步骤
+
+### 第 0 步：验证环境（可选但推荐）
+
+```powershell
+cd K:\payment\AbcPaymentGateway
+.\check-deploy-env.ps1
+```
+
+应该看到：`Results: 7/7 passed` 和 `OK: Environment is ready for deployment!`
+
+### 第 1 步：执行部署脚本
+
+在项目根目录 (`K:\payment\AbcPaymentGateway`) 打开 PowerShell：
+
+```powershell
+.\build-and-deploy.ps1
+```
+
+**就这么简单！** 脚本将自动：
+
+1. 🐳 **本地构建 Docker 镜像**
+   - 编译 .NET 10 应用（Native AOT）
+   - 预计时间：3-5 分钟（首次更长）
+
+2. 📦 **打包镜像**
+   - 导出为 `.tar.gz` 文件
+   - 预计大小：100-200 MB
+
+3. 📤 **上传到服务器**
+   - 通过 SSH/SCP 上传到 `/tmp/`
+   - 预计时间：1-3 分钟（取决于网速）
+
+4. 🎯 **远程部署**
+   - 加载镜像 → 重启容器 → 健康检查
+   - 预计时间：30-60 秒
+
+5. ✅ **完成**
+   - 输出显示 "✅ 部署完成!" 和运行中的容器信息
+
+## 📊 预期输出
+
+```
+========================================
+Payment Gateway 本地构建与远程部署
+========================================
+
+[1/5] 检查必要条件...
+✅ Docker 已安装
+✅ SSH 私钥已找到
+
+[2/5] 构建 Docker 镜像 (payment-gateway-jit)...
+... 构建过程输出 ...
+✅ Docker 镜像构建成功
+
+[3/5] 导出镜像为 TAR 文件...
+✅ 镜像已导出: payment-gateway-latest.tar.gz (大小: 145.23 MB)
+
+[4/5] 上传镜像到远程服务器 (tx.qsgl.net)...
+payment-gateway-latest.tar.gz          100%  145MB   5.2MB/s
+✅ 镜像已上传到 /tmp/payment-gateway-latest.tar.gz
+
+[5/5] 在远程服务器执行部署...
+=== 开始远程部署 ===
+步骤 1: 加载新镜像...
+Loaded image: payment-gateway-jit:latest
+
+步骤 2: 删除旧容器...
+Removing payment-gateway ... done
+
+步骤 3: 使用新镜像启动容器...
+Creating payment-gateway ... done
+
+步骤 4: 等待服务启动...
+
+步骤 5: 健康检查...
+{"status":"Healthy","timestamp":"2026-01-12T10:30:45Z"}
+✅ 健康检查通过
+
+步骤 6: 清理临时文件...
+
+=== ✅ 部署成功! ===
+CONTAINER ID   IMAGE                         COMMAND   CREATED   STATUS
+a1b2c3d4e5f6   payment-gateway-jit:latest    ...       1m        Up 1m
+
+✅ 部署完成!
+服务地址: https://payment.qsgl.net
+```
+
+## 📱 验证部署
+
+部署完成后，验证服务正常运行：
+
+### 1️⃣ 查看运行状态
+
+```powershell
+# 连接到服务器查看容器
+ssh -i "K:\Key\tx.qsgl.net_id_ed25519" root@tx.qsgl.net "docker ps | grep payment"
+```
+
+### 2️⃣ 访问 API 文档
+
+```
+https://payment.qsgl.net/swagger/
+```
+
+### 3️⃣ 检查健康状态
+
+```powershell
+Invoke-WebRequest -Uri "https://payment.qsgl.net/health" -UseBasicParsing
+```
+
+### 4️⃣ 查看应用日志
+
+```powershell
+ssh -i "K:\Key\tx.qsgl.net_id_ed25519" root@tx.qsgl.net "docker logs -f payment-gateway"
+```
+
+## ⚡ 高级用法
+
+### 使用自定义参数
+
+```powershell
+.\build-and-deploy.ps1 `
+  -RemoteHost "tx.qsgl.net" `
+  -RemoteUser "root" `
+  -RemotePort 22 `
+  -RemoteDir "/opt/payment-gateway" `
+  -SSHKeyPath "K:\Key\tx.qsgl.net_id_ed25519" `
+  -ImageName "payment-gateway-jit" `
+  -ImageTag "latest"
+```
+
+### 仅构建镜像（不部署）
+
+```powershell
+# 使用 Docker CLI 直接构建
+docker build -t payment-gateway-jit:latest .
+
+# 验证镜像
+docker images | grep payment-gateway-jit
+```
+
+### 手动上传和部署
+
+```powershell
+# 步骤 1: 导出镜像
+docker save payment-gateway-jit:latest | gzip > image.tar.gz
+
+# 步骤 2: 上传
+scp -i "K:\Key\tx.qsgl.net_id_ed25519" image.tar.gz root@tx.qsgl.net:/tmp/
+
+# 步骤 3: 远程加载并重启
+ssh -i "K:\Key\tx.qsgl.net_id_ed25519" root@tx.qsgl.net << 'EOF'
+cd /opt/payment-gateway
+docker load < /tmp/image.tar.gz
+docker-compose down
+docker-compose up -d
+EOF
+```
+
+## 🔧 故障排查
+
+| 问题 | 解决方案 |
+|------|---------|
+| `Docker not found` | 确保 Docker Desktop 已启动 |
+| `SSH connection failed` | 检查网络和 SSH 私钥权限 |
+| `Health check failed` | 运行 `docker logs payment-gateway` 查看错误 |
+| `Permission denied` | 确保 SSH 私钥权限为 600：`chmod 600 K:\Key\*` |
+
+## 📚 详细文档
+
+完整的部署指南参考：`LOCAL_DEPLOY.md`
+
+```powershell
+# 在编辑器中打开
+notepad .\LOCAL_DEPLOY.md
+```
+
+## 🎯 完整工作流（推荐）
+
+1. **本地开发**
+   ```powershell
+   # 修改代码，git commit & push
+   git add .
+   git commit -m "feature: add new payment method"
+   git push origin master
+   ```
+
+2. **GitHub Actions 通知** (自动触发)
+   - 代码已推送到 GitHub
+   - Actions 显示部署说明
+
+3. **本地部署**
+   ```powershell
+   .\build-and-deploy.ps1
+   ```
+
+4. **验证部署**
+   ```powershell
+   Invoke-WebRequest https://payment.qsgl.net/health
+   ```
+
+## 📞 需要帮助？
+
+- 查看脚本源代码：`build-and-deploy.ps1`
+- 查看环境检查：`check-deploy-env.ps1`
+- 查看完整文档：`LOCAL_DEPLOY.md`
+- 查看 GitHub 工作流：`.github/workflows/auto-deploy.yml`
+
+---
+
+**就这么简单！使用 `.\build-and-deploy.ps1` 一键部署到生产环境！** 🚀- ✅ 农行商户证书（.pfx 文件）
 - ✅ 农行支付平台证书（TrustPay.cer）
 - ✅ SSH 访问权限到服务器
 - ✅ 域名 DNS 解析已配置
