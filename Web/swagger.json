@@ -35,6 +35,14 @@
     {
       "name": "Payment",
       "description": "支付接口 - 农行综合收银台支付服务"
+    },
+    {
+      "name": "Alipay",
+      "description": "支付宝支付接口 - 农行支付宝业务"
+    },
+    {
+      "name": "ABC Pay",
+      "description": "农行一码多扫支付接口 - 农行统一支付"
     }
   ],
   "paths": {
@@ -488,6 +496,420 @@
           }
         }
       }
+    },
+    "/api/payment/alipay/qrcode": {
+      "post": {
+        "summary": "支付宝扫码支付（被扫）",
+        "description": "生成支付宝二维码供用户扫描支付。商户展示二维码，客户使用支付宝APP扫码完成支付。",
+        "tags": ["Alipay"],
+        "operationId": "createAlipayQRCodePayment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlipayQRCodeRequest"
+              },
+              "example": {
+                "orderNo": "ORD20260113001",
+                "amount": 100.00,
+                "merchantId": "103881636900016",
+                "goodsName": "商品购买",
+                "notifyUrl": "https://example.com/api/payment/notify",
+                "returnUrl": "https://example.com/payment/result",
+                "expiredDate": "30",
+                "limitPay": "0"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "支付订单创建成功，返回二维码URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlipayQRCodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "errorCode": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "errorCode": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/alipay/precreate": {
+      "post": {
+        "summary": "支付宝订单预创建（ALI_PRECREATE）",
+        "description": "预先创建支付宝订单，生成二维码供用户扫码支付。PayTypeID=4（ALI_PRECREATE）。适用于线下扫码支付、预生成订单场景。",
+        "tags": ["Alipay"],
+        "operationId": "createAlipayPrecreateOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlipayPrecreateRequest"
+              },
+              "example": {
+                "orderNo": "ORD20260116001",
+                "amount": 100.00,
+                "merchantId": "103881636900016",
+                "goodsName": "商品购买",
+                "notifyUrl": "https://example.com/api/payment/notify",
+                "expiredDate": "30",
+                "limitPay": "0",
+                "storeId": "STORE_001",
+                "terminalId": "TERM_001",
+                "attach": "custom_data_123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "订单预创建成功，返回二维码URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlipayPrecreateResponse"
+                },
+                "example": {
+                  "isSuccess": true,
+                  "orderNo": "ORD20260116001",
+                  "transactionId": "ABC20260116123456001",
+                  "qrCodeUrl": "https://qr.alipay.com/bax00000000000000000",
+                  "amount": 100.00,
+                  "status": "SUCCESS",
+                  "message": "订单创建成功",
+                  "expireTime": "2026-01-16T15:30:00"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "errorCode": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "errorCode": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/alipay/pc": {
+      "post": {
+        "summary": "支付宝PC网页支付",
+        "description": "在PC电脑网页中，跳转到支付宝页面完成支付。适用于PC网站支付场景。",
+        "tags": ["Alipay"],
+        "operationId": "createAlipayPCPayment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlipayPCRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "支付订单创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlipayPCResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/alipay/wap": {
+      "post": {
+        "summary": "支付宝WAP支付",
+        "description": "在移动端网页应用中，跳转到支付宝APP或网页完成支付。适用于手机网站H5支付场景。",
+        "tags": ["Alipay"],
+        "operationId": "createAlipayWapPayment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlipayWapRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "支付订单创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlipayWapResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/alipay/app": {
+      "post": {
+        "summary": "支付宝APP支付",
+        "description": "在APP中集成支付宝SDK，通过接口获取订单字符串调起支付宝SDK完成支付。",
+        "tags": ["Alipay"],
+        "operationId": "createAlipayAppPayment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlipayAppRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "支付订单创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlipayAppResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/alipay/barcode": {
+      "post": {
+        "summary": "支付宝付款码支付（主扫）",
+        "description": "商户使用扫码枪扫描用户支付宝付款码完成支付。适用于线下收银台、POS机支付场景。",
+        "tags": ["Alipay"],
+        "operationId": "createAlipayBarCodePayment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlipayBarCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "支付成功或处理中",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlipayBarCodeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/alipay/query/{orderNo}": {
+      "get": {
+        "summary": "支付宝订单查询",
+        "description": "查询支付宝订单的支付状态，用于确认订单是否支付成功。",
+        "tags": ["Alipay"],
+        "operationId": "queryAlipayOrder",
+        "parameters": [
+          {
+            "name": "orderNo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "商户订单号"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlipayQueryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/alipay/refund": {
+      "post": {
+        "summary": "支付宝退款",
+        "description": "对已支付成功的订单发起退款。",
+        "tags": ["Alipay"],
+        "operationId": "refundAlipayOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlipayRefundRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "退款成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlipayRefundResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/payment/abc/scanpay": {
+      "post": {
+        "summary": "农行一码多扫线上扫码下单",
+        "description": "农行综合收银台一码多扫功能，生成统一支付二维码，支持多种支付方式。适用于PC网站支付、H5支付、线下扫码支付场景。",
+        "tags": ["ABC Pay"],
+        "operationId": "createAbcScanPayOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AbcScanPayRequest"
+              },
+              "example": {
+                "orderNo": "ORD20260117001",
+                "amount": 100.00,
+                "merchantId": "103881636900016",
+                "goodsName": "商品购买",
+                "notifyUrl": "https://payment.qsgl.net/api/payment/notify",
+                "payTypeID": "ImmediatePay",
+                "currencyCode": "156",
+                "commodityType": "0201",
+                "paymentType": "A",
+                "paymentLinkType": "1",
+                "notifyType": "1",
+                "expiredDate": "30",
+                "installmentMark": "0",
+                "isBreakAccount": "0"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "订单创建成功，返回二维码URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AbcScanPayResponse"
+                },
+                "example": {
+                  "isSuccess": true,
+                  "orderNo": "ORD20260117001",
+                  "transactionId": "ABC20260117123456001",
+                  "scanPayQRURL": "https://payment.abchina.com/...",
+                  "amount": 100.00,
+                  "status": "SUCCESS",
+                  "message": "订单创建成功",
+                  "expireTime": "2026-01-17T15:30:00",
+                  "returnCode": "0000"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "errorCode": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器内部错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "errorCode": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -758,7 +1180,529 @@
             "example": "2026-01-06T14:30:00.1234567Z"
           }
         }
+      },
+      "AlipayQRCodeRequest": {
+        "type": "object",
+        "required": ["orderNo", "amount", "merchantId", "goodsName"],
+        "properties": {
+          "orderNo": {
+            "type": "string",
+            "description": "商户订单号",
+            "example": "ORD20260113001"
+          },
+          "amount": {
+            "type": "number",
+            "format": "decimal",
+            "description": "支付金额，单位：元",
+            "example": 100.00
+          },
+          "merchantId": {
+            "type": "string",
+            "description": "商户ID",
+            "example": "103881636900016"
+          },
+          "goodsName": {
+            "type": "string",
+            "description": "商品名称/订单描述",
+            "example": "商品购买"
+          },
+          "notifyUrl": {
+            "type": "string",
+            "description": "支付回调地址（选填）",
+            "example": "https://example.com/api/payment/notify"
+          },
+          "returnUrl": {
+            "type": "string",
+            "description": "支付完成返回地址（选填）",
+            "example": "https://example.com/payment/result"
+          },
+          "expiredDate": {
+            "type": "string",
+            "description": "订单过期时间，单位：分钟（选填，默认30分钟）",
+            "example": "30"
+          },
+          "limitPay": {
+            "type": "string",
+            "description": "是否限制信用卡支付（选填，0=不限制，1=限制）",
+            "example": "0"
+          },
+          "childMerchantNo": {
+            "type": "string",
+            "description": "子商户号（大商户模式使用）",
+            "example": "12345"
+          },
+          "attach": {
+            "type": "string",
+            "description": "附加数据（选填，在回调中原样返回）",
+            "example": "custom_data_123"
+          }
+        }
+      },
+      "AlipayQRCodeResponse": {
+        "type": "object",
+        "properties": {
+          "isSuccess": {
+            "type": "boolean",
+            "description": "是否成功",
+            "example": true
+          },
+          "orderNo": {
+            "type": "string",
+            "description": "商户订单号",
+            "example": "ORD20260113001"
+          },
+          "transactionId": {
+            "type": "string",
+            "description": "农行交易流水号",
+            "example": "ABC20260113123456001"
+          },
+          "qrCodeUrl": {
+            "type": "string",
+            "description": "支付宝二维码URL",
+            "example": "https://qr.alipay.com/bax00000000000000000"
+          },
+          "amount": {
+            "type": "number",
+            "format": "decimal",
+            "description": "支付金额",
+            "example": 100.00
+          },
+          "status": {
+            "type": "string",
+            "description": "订单状态（PENDING=待支付，SUCCESS=已支付，FAILED=失败）",
+            "enum": ["PENDING", "SUCCESS", "FAILED"],
+            "example": "PENDING"
+          },
+          "message": {
+            "type": "string",
+            "description": "返回消息",
+            "example": "支付订单创建成功"
+          },
+          "expireTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "二维码过期时间",
+            "example": "2026-01-13T15:30:00"
+          },
+          "errorCode": {
+            "type": "string",
+            "description": "错误代码（失败时返回）",
+            "example": "PARAM_ERROR"
+          }
+        }
+      },
+      "AlipayPrecreateRequest": {
+        "type": "object",
+        "required": ["orderNo", "amount", "merchantId", "goodsName"],
+        "properties": {
+          "orderNo": {
+            "type": "string",
+            "description": "商户订单号",
+            "example": "ORD20260116001"
+          },
+          "amount": {
+            "type": "number",
+            "format": "decimal",
+            "description": "支付金额，单位：元",
+            "example": 100.00
+          },
+          "merchantId": {
+            "type": "string",
+            "description": "商户ID",
+            "example": "103881636900016"
+          },
+          "goodsName": {
+            "type": "string",
+            "description": "商品名称/订单描述",
+            "example": "商品购买"
+          },
+          "notifyUrl": {
+            "type": "string",
+            "description": "支付回调地址（选填）",
+            "example": "https://example.com/api/payment/notify"
+          },
+          "expiredDate": {
+            "type": "string",
+            "description": "订单过期时间，单位：分钟（选填，默认30分钟）",
+            "example": "30"
+          },
+          "limitPay": {
+            "type": "string",
+            "description": "是否限制信用卡支付（选填，0=不限制，1=限制）",
+            "example": "0"
+          },
+          "attach": {
+            "type": "string",
+            "description": "附加数据（选填，在回调中原样返回）",
+            "example": "custom_data_123"
+          },
+          "storeId": {
+            "type": "string",
+            "description": "门店编号（选填）",
+            "example": "STORE_001"
+          },
+          "terminalId": {
+            "type": "string",
+            "description": "终端号（选填）",
+            "example": "TERM_001"
+          }
+        }
+      },
+      "AlipayPrecreateResponse": {
+        "type": "object",
+        "properties": {
+          "isSuccess": {
+            "type": "boolean",
+            "description": "是否成功",
+            "example": true
+          },
+          "orderNo": {
+            "type": "string",
+            "description": "商户订单号",
+            "example": "ORD20260116001"
+          },
+          "transactionId": {
+            "type": "string",
+            "description": "农行交易流水号",
+            "example": "ABC20260116123456001"
+          },
+          "qrCodeUrl": {
+            "type": "string",
+            "description": "支付宝二维码URL（用户扫码支付）",
+            "example": "https://qr.alipay.com/bax00000000000000000"
+          },
+          "amount": {
+            "type": "number",
+            "format": "decimal",
+            "description": "支付金额",
+            "example": 100.00
+          },
+          "status": {
+            "type": "string",
+            "description": "订单状态（PENDING=待支付，SUCCESS=已支付，FAILED=失败）",
+            "enum": ["PENDING", "SUCCESS", "FAILED"],
+            "example": "PENDING"
+          },
+          "message": {
+            "type": "string",
+            "description": "返回消息",
+            "example": "订单创建成功"
+          },
+          "expireTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "二维码过期时间",
+            "example": "2026-01-16T15:30:00"
+          },
+          "errorCode": {
+            "type": "string",
+            "description": "错误代码（失败时返回）",
+            "example": "PARAM_ERROR"
+          }
+        }
+      },
+      "AlipayPCRequest": {
+        "type": "object",
+        "properties": {
+          "orderNo": { "type": "string", "example": "ORD20260113004" },
+          "amount": { "type": "number", "format": "decimal", "example": 288.00 },
+          "merchantId": { "type": "string", "example": "103881636900016" },
+          "goodsName": { "type": "string", "example": "电脑商品购买" },
+          "notifyUrl": { "type": "string", "example": "https://example.com/api/payment/notify" },
+          "returnUrl": { "type": "string", "example": "https://example.com/payment/result" },
+          "quitUrl": { "type": "string", "example": "https://example.com" }
+        }
+      },
+      "AlipayPCResponse": {
+        "type": "object",
+        "properties": {
+          "isSuccess": { "type": "boolean", "example": true },
+          "orderNo": { "type": "string", "example": "ORD20260113004" },
+          "transactionId": { "type": "string", "example": "ABC20260113123456004" },
+          "paymentUrl": { "type": "string", "example": "https://openapi.alipay.com/gateway.do?..." },
+          "amount": { "type": "number", "format": "decimal", "example": 288.00 },
+          "status": { "type": "string", "example": "PENDING" },
+          "message": { "type": "string", "example": "支付订单创建成功" },
+          "errorCode": { "type": "string", "example": "PARAM_ERROR" }
+        }
+      },
+      "AlipayWapRequest": {
+        "type": "object",
+        "properties": {
+          "orderNo": { "type": "string", "example": "ORD20260113002" },
+          "amount": { "type": "number", "format": "decimal", "example": 88.88 },
+          "merchantId": { "type": "string", "example": "103881636900016" },
+          "goodsName": { "type": "string", "example": "商品购买" },
+          "notifyUrl": { "type": "string", "example": "https://example.com/api/payment/notify" },
+          "returnUrl": { "type": "string", "example": "https://example.com/payment/result" },
+          "quitUrl": { "type": "string", "example": "https://example.com" }
+        }
+      },
+      "AlipayWapResponse": {
+        "type": "object",
+        "properties": {
+          "isSuccess": { "type": "boolean", "example": true },
+          "orderNo": { "type": "string", "example": "ORD20260113002" },
+          "transactionId": { "type": "string", "example": "ABC20260113123456002" },
+          "paymentUrl": { "type": "string", "example": "https://openapi.alipay.com/gateway.do?..." },
+          "amount": { "type": "number", "format": "decimal", "example": 88.88 },
+          "status": { "type": "string", "example": "PENDING" },
+          "message": { "type": "string", "example": "支付订单创建成功" },
+          "errorCode": { "type": "string", "example": "PARAM_ERROR" }
+        }
+      },
+      "AlipayAppRequest": {
+        "type": "object",
+        "properties": {
+          "orderNo": { "type": "string", "example": "ORD20260113003" },
+          "amount": { "type": "number", "format": "decimal", "example": 199.99 },
+          "merchantId": { "type": "string", "example": "103881636900016" },
+          "goodsName": { "type": "string", "example": "商品购买" },
+          "notifyUrl": { "type": "string", "example": "https://example.com/api/payment/notify" },
+          "attach": { "type": "string", "example": "custom_data_123" }
+        }
+      },
+      "AlipayAppResponse": {
+        "type": "object",
+        "properties": {
+          "isSuccess": { "type": "boolean", "example": true },
+          "orderNo": { "type": "string", "example": "ORD20260113003" },
+          "transactionId": { "type": "string", "example": "ABC20260113123456003" },
+          "orderString": { "type": "string", "example": "app_id=2021000000000000&biz_content=..." },
+          "amount": { "type": "number", "format": "decimal", "example": 199.99 },
+          "status": { "type": "string", "example": "PENDING" },
+          "message": { "type": "string", "example": "支付订单创建成功" },
+          "errorCode": { "type": "string", "example": "PARAM_ERROR" }
+        }
+      },
+      "AlipayBarCodeRequest": {
+        "type": "object",
+        "properties": {
+          "orderNo": { "type": "string", "example": "ORD20260113005" },
+          "amount": { "type": "number", "format": "decimal", "example": 68.00 },
+          "merchantId": { "type": "string", "example": "103881636900016" },
+          "goodsName": { "type": "string", "example": "线下扫码支付" },
+          "authCode": { "type": "string", "example": "280123456789012345", "description": "用户付款码（28开头的18位数字）" },
+          "notifyUrl": { "type": "string", "example": "https://example.com/api/payment/notify" },
+          "attach": { "type": "string", "example": "store_001" }
+        }
+      },
+      "AlipayBarCodeResponse": {
+        "type": "object",
+        "properties": {
+          "isSuccess": { "type": "boolean", "example": true },
+          "orderNo": { "type": "string", "example": "ORD20260113005" },
+          "transactionId": { "type": "string", "example": "ABC20260113123456005" },
+          "thirdOrderNo": { "type": "string", "example": "2026011322001234567890123456" },
+          "amount": { "type": "number", "format": "decimal", "example": 68.00 },
+          "status": { "type": "string", "example": "SUCCESS", "enum": ["SUCCESS", "FAILED", "USERPAYING"] },
+          "message": { "type": "string", "example": "支付成功" },
+          "payTime": { "type": "string", "format": "date-time", "example": "2026-01-13T16:00:00" },
+          "errorCode": { "type": "string", "example": "AUTHCODE_INVALID" }
+        }
+      },
+      "AlipayQueryResponse": {
+        "type": "object",
+        "properties": {
+          "isSuccess": { "type": "boolean", "example": true },
+          "orderNo": { "type": "string", "example": "ORD20260113001" },
+          "transactionId": { "type": "string", "example": "ABC20260113123456001" },
+          "thirdOrderNo": { "type": "string", "example": "2026011322001234567890123456" },
+          "amount": { "type": "number", "format": "decimal", "example": 100.00 },
+          "status": { "type": "string", "example": "SUCCESS", "enum": ["PENDING", "SUCCESS", "FAILED", "CLOSED"] },
+          "payTime": { "type": "string", "format": "date-time", "example": "2026-01-13T14:30:00" },
+          "message": { "type": "string", "example": "查询成功" },
+          "errorCode": { "type": "string", "example": "ORDER_NOT_FOUND" }
+        }
+      },
+      "AlipayRefundRequest": {
+        "type": "object",
+        "properties": {
+          "orderNo": { "type": "string", "example": "ORD20260113001" },
+          "refundAmount": { "type": "number", "format": "decimal", "example": 50.00 },
+          "refundReason": { "type": "string", "example": "用户申请退款" },
+          "merchantId": { "type": "string", "example": "103881636900016" }
+        }
+      },
+      "AlipayRefundResponse": {
+        "type": "object",
+        "properties": {
+          "isSuccess": { "type": "boolean", "example": true },
+          "orderNo": { "type": "string", "example": "ORD20260113001" },
+          "refundNo": { "type": "string", "example": "RF20260113123456001" },
+          "refundAmount": { "type": "number", "format": "decimal", "example": 50.00 },
+          "status": { "type": "string", "example": "SUCCESS", "enum": ["SUCCESS", "PROCESSING", "FAILED"] },
+          "message": { "type": "string", "example": "退款成功" },
+          "refundTime": { "type": "string", "format": "date-time", "example": "2026-01-13T15:00:00" },
+          "errorCode": { "type": "string", "example": "REFUND_ERROR" }
+        }
+      },
+      "AbcScanPayRequest": {
+        "type": "object",
+        "required": ["orderNo", "amount", "merchantId", "goodsName", "notifyUrl"],
+        "properties": {
+          "orderNo": {
+            "type": "string",
+            "description": "商户订单号",
+            "example": "ORD20260117001"
+          },
+          "amount": {
+            "type": "number",
+            "format": "decimal",
+            "description": "支付金额，单位：元",
+            "example": 100.00
+          },
+          "merchantId": {
+            "type": "string",
+            "description": "商户ID",
+            "example": "103881636900016"
+          },
+          "goodsName": {
+            "type": "string",
+            "description": "商品名称/订单描述",
+            "example": "商品购买"
+          },
+          "notifyUrl": {
+            "type": "string",
+            "description": "支付回调地址",
+            "example": "https://payment.qsgl.net/api/payment/notify"
+          },
+          "payTypeID": {
+            "type": "string",
+            "description": "交易类型：ImmediatePay, PreAuthPay, DividedPay, PostponePay",
+            "example": "ImmediatePay"
+          },
+          "currencyCode": {
+            "type": "string",
+            "description": "币种代码（156=人民币）",
+            "example": "156"
+          },
+          "commodityType": {
+            "type": "string",
+            "description": "商品种类（0201=虚拟类, 0202=传统类, 0203=实名类）",
+            "example": "0201"
+          },
+          "paymentType": {
+            "type": "string",
+            "description": "支付账户类型（1=农行借记卡, 3=农行贷记卡, A=支付方式合并）",
+            "example": "A"
+          },
+          "paymentLinkType": {
+            "type": "string",
+            "description": "交易渠道（1=internet, 2=手机网络, 4=智能客户端）",
+            "example": "1"
+          },
+          "notifyType": {
+            "type": "string",
+            "description": "通知方式（0=URL页面通知, 1=服务器通知）",
+            "example": "1"
+          },
+          "expiredDate": {
+            "type": "string",
+            "description": "订单保存时间，单位：天",
+            "example": "30"
+          },
+          "installmentMark": {
+            "type": "string",
+            "description": "分期标识（0=否, 1=分期）",
+            "example": "0"
+          },
+          "isBreakAccount": {
+            "type": "string",
+            "description": "交易是否分账（0=否, 1=是）",
+            "example": "0"
+          },
+          "receiverAddress": {
+            "type": "string",
+            "description": "收货地址",
+            "example": "北京市朝阳区"
+          },
+          "buyIP": {
+            "type": "string",
+            "description": "客户交易IP",
+            "example": "192.168.1.1"
+          },
+          "merchantRemarks": {
+            "type": "string",
+            "description": "附言（不超过100字符）",
+            "example": "测试订单"
+          },
+          "orderFrom": {
+            "type": "string",
+            "description": "订单来源（01=缴费, 02=开放银行, 03=消费商城）",
+            "example": "03"
+          },
+          "receiveMerchantType": {
+            "type": "string",
+            "description": "收款方账户类型（0=个人, 1=对公）",
+            "example": "1"
+          },
+          "splitAccTemplate": {
+            "type": "string",
+            "description": "分账模版编号",
+            "example": ""
+          }
+        }
+      },
+      "AbcScanPayResponse": {
+        "type": "object",
+        "properties": {
+          "isSuccess": {
+            "type": "boolean",
+            "description": "是否成功",
+            "example": true
+          },
+          "orderNo": {
+            "type": "string",
+            "description": "商户订单号",
+            "example": "ORD20260117001"
+          },
+          "transactionId": {
+            "type": "string",
+            "description": "农行交易流水号",
+            "example": "ABC20260117123456001"
+          },
+          "scanPayQRURL": {
+            "type": "string",
+            "description": "扫码支付二维码URL",
+            "example": "https://payment.abchina.com/..."
+          },
+          "amount": {
+            "type": "number",
+            "format": "decimal",
+            "description": "支付金额",
+            "example": 100.00
+          },
+          "status": {
+            "type": "string",
+            "description": "订单状态（PENDING=待支付，SUCCESS=已支付，FAILED=失败）",
+            "enum": ["PENDING", "SUCCESS", "FAILED"],
+            "example": "PENDING"
+          },
+          "message": {
+            "type": "string",
+            "description": "返回消息",
+            "example": "订单创建成功"
+          },
+          "expireTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "二维码过期时间",
+            "example": "2026-01-17T15:30:00"
+          },
+          "errorCode": {
+            "type": "string",
+            "description": "错误代码（失败时返回）",
+            "example": "PARAM_ERROR"
+          },
+          "returnCode": {
+            "type": "string",
+            "description": "返回码（0000=成功）",
+            "example": "0000"
+          }
+        }
       }
     }
   }
 }
+

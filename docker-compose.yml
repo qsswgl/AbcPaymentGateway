@@ -5,14 +5,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: payment-gateway-aot:latest
+    image: payment-gateway-jit:latest
     container_name: payment-gateway
     restart: unless-stopped
     networks:
       - traefik-net
     volumes:
-      # 挂载证书目录（调整为服务器路径）
-      - /opt/certs/cert:/app/cert:ro
+      # 挂载证书目录（使用项目目录下的证书）
+      - ./cert:/app/cert:ro
       # 挂载日志目录
       - ./logs:/app/logs
       # 挂载 Web 目录（Swagger 文档）

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>农行页面支付二维码生成器</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .order-info {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+        }
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+        .value {
+            color: #333;
+        }
+        .amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .input-group input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        .btn-generate {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        .qrcode-container {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .qrcode-container.show {
+            display: block;
+        }
+        #qrcode {
+            display: inline-block;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .url-display {
+            margin-top: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            word-break: break-all;
+            font-size: 12px;
+            color: #666;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        .error-info {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .error-info h3 {
+            color: #856404;
+            margin: 0 0 10px 0;
+        }
+        .error-info p {
+            margin: 5px 0;
+            color: #856404;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-error {
+            background: #dc3545;
+            color: white;
+        }
+        .status-success {
+            background: #28a745;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏦 农行页面支付二维码</h1>
+        <div class="subtitle">Agricultural Bank of China - Page Payment QR Code</div>
+        
+        <div class="order-info">
+            <div class="info-row">
+                <span class="label">结算单编号:</span>
+                <span class="value" id="orderNo">-</span>
+            </div>
+            <div class="info-row">
+                <span class="label">结算日期:</span>
+                <span class="value">2026-01-19 08:45</span>
+            </div>
+            <div class="info-row">
+                <span class="label">结算金额:</span>
+                <span class="value amount">¥10.00</span>
+            </div>
+            <div class="info-row">
+                <span class="label">商户号:</span>
+                <span class="value">103881636900016</span>
+            </div>
+            <div class="info-row">
+                <span class="label">状态:</span>
+                <span class="status-badge status-error">等待权限确认</span>
+            </div>
+        </div>
+
+        <div class="error-info">
+            <h3>⚠️ 当前状态</h3>
+            <p><strong>错误码:</strong> EUNKWN (未知错误)</p>
+            <p><strong>错误信息:</strong> 交易结果未知，请进行查证明确交易结果</p>
+            <p><strong>可能原因:</strong> 商户权限未开通页面支付功能 (PayReq)</p>
+            <p><strong>建议操作:</strong> 联系农行确认商户103881636900016是否已开通页面支付权限</p>
+        </div>
+
+        <div class="input-group">
+            <label for="paymentUrl">支付链接 (PaymentURL):</label>
+            <input type="text" id="paymentUrl" placeholder="等待获取支付URL..." 
+                   value="https://payment.qsgl.net/error?code=EUNKWN&message=商户权限未开通">
+        </div>
+
+        <button class="btn-generate" onclick="generateQRCode()">
+            🎨 生成二维码
+        </button>
+
+        <div class="qrcode-container" id="qrcodeContainer">
+            <div id="qrcode"></div>
+            <div class="url-display" id="urlDisplay"></div>
+            <p style="color: #666; margin-top: 10px; font-size: 12px;">
+                📱 使用手机扫描上方二维码访问支付页面
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // 生成订单号
+        function generateOrderNo() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+            const second = String(now.getSeconds()).padStart(2, '0');
+            return `ORD${year}${month}${day}${hour}${minute}${second}`;
+        }
+
+        // 页面加载时生成订单号
+        document.getElementById('orderNo').textContent = generateOrderNo();
+
+        function generateQRCode() {
+            const url = document.getElementById('paymentUrl').value.trim();
+            
+            if (!url) {
+                alert('请输入支付链接!');
+                return;
+            }
+
+            // 清除之前的二维码
+            const qrcodeElement = document.getElementById('qrcode');
+            qrcodeElement.innerHTML = '';
+
+            // 生成新二维码
+            new QRCode(qrcodeElement, {
+                text: url,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            // 显示URL
+            document.getElementById('urlDisplay').textContent = url;
+
+            // 显示二维码容器
+            document.getElementById('qrcodeContainer').classList.add('show');
+
+            // 滚动到二维码
+            setTimeout(() => {
+                document.getElementById('qrcodeContainer').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+            }, 100);
+        }
+
+        // 允许回车生成二维码
+        document.getElementById('paymentUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateQRCode();
+            }
+        });
+    </script>
+</body>
+</html>

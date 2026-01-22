@@ -1,0 +1,12 @@
+﻿{
+    "isSuccess":  false,
+    "orderNo":  "ABC_SCAN_20260119084926",
+    "transactionId":  "",
+    "scanPayQRURL":  "",
+    "amount":  10,
+    "status":  "UNKNOWN",
+    "message":  "交易结果未知，请稍后查询订单状态或联系客服确认 (EUNKWN)",
+    "expireTime":  "2026-01-19T09:19:27.3022767+08:00",
+    "errorCode":  "EUNKWN",
+    "returnCode":  "EUNKWN"
+}

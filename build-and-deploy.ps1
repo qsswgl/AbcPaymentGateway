@@ -1,5 +1,5 @@
-# Payment Gateway 本地构建和远程部署脚本
-# 功能：本地编译 Docker 镜像 → 打包 → 通过 SSH/SCP 上传到腾讯云 → 远程执行更新部署
+# Payment Gateway Local Build and Remote Deploy Script
+# Build Docker image locally -> Package -> Upload via SSH/SCP -> Deploy on Tencent Cloud
 
 param(
     [string]$RemoteHost = "tx.qsgl.net",
@@ -14,106 +14,155 @@ param(
 $ErrorActionPreference = "Stop"
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "Payment Gateway 本地构建与远程部署" -ForegroundColor Cyan
+Write-Host "Payment Gateway - Local Build & Remote Deploy" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
-# 步骤 1: 检查必要条件
-Write-Host "`n[1/5] 检查必要条件..." -ForegroundColor Yellow
+# Step 1: Check prerequisites
+Write-Host "`n[1/5] Checking prerequisites..." -ForegroundColor Yellow
+
+# Find Docker executable
+$DockerCmd = $null
+$DockerPaths = @(
+    "C:\Program Files\Docker\Docker\resources\bin\docker.exe",
+    "C:\ProgramData\DockerDesktop\version-bin\docker.exe",
+    "$env:ProgramFiles\Docker\Docker\resources\bin\docker.exe"
+)
+
+foreach ($path in $DockerPaths) {
+    if (Test-Path $path) {
+        $DockerCmd = $path
+        break
+    }
+}
+
+if (-not $DockerCmd) {
+    # Try to find in PATH or common locations
+    $found = Get-Command docker -ErrorAction SilentlyContinue
+    if ($found) {
+        $DockerCmd = "docker"
+    } else {
+        Write-Host "ERROR: Docker not found. Please ensure Docker Desktop is installed and running" -ForegroundColor Red
+        exit 1
+    }
+}
+
+Write-Host "OK: Docker found at: $DockerCmd" -ForegroundColor Green
+
 if (-not (Test-Path $SSHKeyPath)) {
-    Write-Host "❌ SSH 私钥文件不存在: $SSHKeyPath" -ForegroundColor Red
+    Write-Host "ERROR: SSH key not found at: $SSHKeyPath" -ForegroundColor Red
     exit 1
 }
 
 if (-not (Test-Path "Dockerfile")) {
-    Write-Host "❌ 当前目录不是项目根目录（缺少 Dockerfile）" -ForegroundColor Red
+    Write-Host "ERROR: Not in project root directory (missing Dockerfile)" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "✅ Docker 已安装" -ForegroundColor Green
-Write-Host "✅ SSH 私钥已找到" -ForegroundColor Green
+Write-Host "OK: SSH key found" -ForegroundColor Green
+Write-Host "OK: Project directory confirmed" -ForegroundColor Green
 
-# 步骤 2: 本地构建 Docker 镜像
-Write-Host "`n[2/5] 构建 Docker 镜像 ($ImageName)..." -ForegroundColor Yellow
-Write-Host "命令: docker build -t $($ImageName):$ImageTag ." -ForegroundColor Gray
+# Step 2: Build Docker image locally
+Write-Host "`n[2/5] Building Docker image ($ImageName)..." -ForegroundColor Yellow
+Write-Host "Command: $DockerCmd build -t $($ImageName):$ImageTag ." -ForegroundColor Gray
 
-docker build -t "$ImageName`:$ImageTag" .
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Docker 构建失败" -ForegroundColor Red
+try {
+    & $DockerCmd build -t "$ImageName`:$ImageTag" .
+    if ($LASTEXITCODE -ne 0) {
+        throw "Docker build failed"
+    }
+    Write-Host "OK: Docker image built successfully" -ForegroundColor Green
+} catch {
+    Write-Host "ERROR: Docker build failed - $_" -ForegroundColor Red
+    Write-Host "Make sure Docker Desktop is running" -ForegroundColor Yellow
     exit 1
 }
-Write-Host "✅ Docker 镜像构建成功" -ForegroundColor Green
 
-# 步骤 3: 保存镜像为 TAR 文件
-Write-Host "`n[3/5] 导出镜像为 TAR 文件..." -ForegroundColor Yellow
+# Step 3: Export image as TAR file
+Write-Host "`n[3/5] Exporting image as TAR file..." -ForegroundColor Yellow
 $TarFile = "payment-gateway-$ImageTag.tar.gz"
-Write-Host "命令: docker save $ImageName`:$ImageTag | gzip > $TarFile" -ForegroundColor Gray
+Write-Host "Command: $DockerCmd save $ImageName`:$ImageTag | gzip > $TarFile" -ForegroundColor Gray
 
-docker save "$ImageName`:$ImageTag" | gzip > $TarFile
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ 镜像导出失败" -ForegroundColor Red
+try {
+    & $DockerCmd save "$ImageName`:$ImageTag" | & gzip > $TarFile
+    if ($LASTEXITCODE -ne 0) {
+        throw "Image export failed"
+    }
+    
+    $TarSize = (Get-Item $TarFile).Length / 1MB
+    Write-Host "OK: Image exported - $TarFile (Size: $([math]::Round($TarSize, 2)) MB)" -ForegroundColor Green
+} catch {
+    Write-Host "ERROR: Image export failed - $_" -ForegroundColor Red
     exit 1
 }
 
-$TarSize = (Get-Item $TarFile).Length / 1MB
-Write-Host "✅ 镜像已导出: $TarFile (大小: $([math]::Round($TarSize, 2)) MB)" -ForegroundColor Green
-
-# 步骤 4: 通过 SCP 上传镜像到远程服务器
-Write-Host "`n[4/5] 上传镜像到远程服务器 ($RemoteHost)..." -ForegroundColor Yellow
+# Step 4: Upload image to remote server via SCP
+Write-Host "`n[4/5] Uploading image to remote server ($RemoteHost)..." -ForegroundColor Yellow
 
 $SCPCommand = "scp -i `"$SSHKeyPath`" -P $RemotePort `"$TarFile`" `"${RemoteUser}@${RemoteHost}:/tmp/`""
-Write-Host "命令: $SCPCommand" -ForegroundColor Gray
+Write-Host "Command: $SCPCommand" -ForegroundColor Gray
 
-Invoke-Expression $SCPCommand
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ 上传失败 (请检查 SSH 密钥和网络连接)" -ForegroundColor Red
+try {
+    Invoke-Expression $SCPCommand
+    if ($LASTEXITCODE -ne 0) {
+        throw "SCP upload failed"
+    }
+    Write-Host "OK: Image uploaded to /tmp/$TarFile" -ForegroundColor Green
+} catch {
+    Write-Host "ERROR: Upload failed - $_" -ForegroundColor Red
+    Write-Host "Check SSH key and network connection" -ForegroundColor Yellow
     exit 1
 }
-Write-Host "✅ 镜像已上传到 /tmp/$TarFile" -ForegroundColor Green
 
-# 步骤 5: 远程执行更新部署脚本
-Write-Host "`n[5/5] 在远程服务器执行部署..." -ForegroundColor Yellow
+# Step 5: Execute remote deployment script
+Write-Host "`n[5/5] Deploying on remote server..." -ForegroundColor Yellow
 
 $RemoteScript = @"
 #!/bin/bash
 set -e
-echo "=== 开始远程部署 ==="
+echo "=== Starting remote deployment ==="
 cd $RemoteDir
 
-echo "步骤 1: 加载新镜像..."
+echo "Step 1: Loading new image..."
 docker load < /tmp/$TarFile
 
-echo "步骤 2: 删除旧容器..."
+echo "Step 2: Stopping old containers..."
 docker-compose down || true
 
-echo "步骤 3: 使用新镜像启动容器..."
+echo "Step 3: Starting containers with new image..."
 docker-compose up -d
 
-echo "步骤 4: 等待服务启动..."
+echo "Step 4: Waiting for service to start..."
 sleep 5
 
-echo "步骤 5: 健康检查..."
-curl -fsS http://localhost:8080/health && echo "✅ 健康检查通过" || (echo "❌ 健康检查失败"; exit 1)
+echo "Step 5: Health check..."
+curl -fsS http://localhost:8080/health && echo "OK: Health check passed" || (echo "ERROR: Health check failed"; exit 1)
 
-echo "步骤 6: 清理临时文件..."
+echo "Step 6: Cleaning up temporary files..."
 rm /tmp/$TarFile
 
-echo "=== ✅ 部署成功! ==="
+echo "=== Deployment completed successfully! ==="
 docker ps | grep payment-gateway
 "@
 
-$SSHCommand = "ssh -i `"$SSHKeyPath`" -p $RemotePort ${RemoteUser}@${RemoteHost}"
-Write-Host "命令: $SSHCommand << 'EOF'" -ForegroundColor Gray
-
-$RemoteScript | & ssh -i $SSHKeyPath -p $RemotePort "${RemoteUser}@${RemoteHost}" 'bash -s'
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ 远程部署执行失败" -ForegroundColor Red
+try {
+    $RemoteScript | & ssh -i $SSHKeyPath -p $RemotePort "${RemoteUser}@${RemoteHost}" 'bash -s'
+    if ($LASTEXITCODE -ne 0) {
+        throw "Remote deployment failed"
+    }
+} catch {
+    Write-Host "ERROR: Remote deployment failed - $_" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "`n✅ 部署完成!" -ForegroundColor Green
-Write-Host "服务地址: https://payment.qsgl.net" -ForegroundColor Cyan
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "Deployment completed successfully!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "Service URL: https://payment.qsgl.net" -ForegroundColor Cyan
+Write-Host "API Docs: https://payment.qsgl.net/swagger" -ForegroundColor Cyan
 
-# 清理本地临时文件
-Write-Host "`n清理本地临时文件..." -ForegroundColor Yellow
+# Cleanup local temporary file
+Write-Host "`nCleaning up local temporary file..." -ForegroundColor Yellow
 Remove-Item $TarFile -Force
-Write-Host "✅ 临时文件已删除" -ForegroundColor Green
+Write-Host "OK: Temporary file deleted" -ForegroundColor Green
+
+Write-Host "`nDeployment finished!" -ForegroundColor Green

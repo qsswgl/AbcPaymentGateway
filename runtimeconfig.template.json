@@ -1,0 +1,6 @@
+{
+  "configProperties": {
+    "System.Net.Security.AllowInsecureRenegotiation": true,
+    "System.Net.Http.SocketsHttpHandler.Http2Support": false
+  }
+}

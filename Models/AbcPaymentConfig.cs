@@ -61,6 +61,11 @@ public class AbcPaymentConfig
     public string TrxUrlPath { get; set; } = "/ebus/ReceiveMerchantTrxReqServlet";
 
     /// <summary>
+    /// 页面支付URL路径 (IE提交地址)
+    /// </summary>
+    public string IETrxUrlPath { get; set; } = "/ebus/ReceiveMerchantIERequestServlet";
+
+    /// <summary>
     /// 商户错误返回URL
     /// </summary>
     public string MerchantErrorUrl { get; set; } = string.Empty;
@@ -69,4 +74,9 @@ public class AbcPaymentConfig
     /// 是否测试环境
     /// </summary>
     public bool IsTestEnvironment { get; set; } = false;
+
+    /// <summary>
+    /// 运行环境 (Production/Development/Test)
+    /// </summary>
+    public string Environment { get; set; } = "Production";
 }

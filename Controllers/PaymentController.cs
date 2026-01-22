@@ -13,13 +13,16 @@ public class PaymentController : ControllerBase
 {
     private readonly AbcPaymentService _paymentService;
     private readonly ILogger<PaymentController> _logger;
+    private readonly IAbcCertificateService _certificateService;
 
     public PaymentController(
         AbcPaymentService paymentService,
-        ILogger<PaymentController> logger)
+        ILogger<PaymentController> logger,
+        IAbcCertificateService certificateService)
     {
         _paymentService = paymentService;
         _logger = logger;
+        _certificateService = certificateService;
     }
 
     /// <summary>
@@ -42,6 +45,94 @@ public class PaymentController : ControllerBase
         request.TrxType = "UDCAppQRCodePayReq";
 
         var response = await _paymentService.ProcessPaymentAsync(request);
+        
+        if (response.IsSuccess)
+        {
+            return Ok(response);
+        }
+        else
+        {
+            return BadRequest(response);
+        }
+    }
+
+    /// <summary>
+    /// 农行一码多扫线上扫码下单（官方V3.0 MSG格式）
+    /// </summary>
+    /// <param name="request">扫码支付请求</param>
+    /// <returns>支付响应</returns>
+    [HttpPost("abc-scan")]
+    [ProducesResponseType(typeof(PaymentResponse), 200)]
+    public async Task<IActionResult> CreateAbcScanPayment([FromBody] AbcScanPayRequest request)
+    {
+        _logger.LogInformation("收到农行一码多扫请求: OrderNo={OrderNo}, Amount={Amount}, MerchantId={MerchantId}, GoodsName={GoodsName}, NotifyUrl={NotifyUrl}", 
+            request.OrderNo, request.Amount, request.MerchantId, request.GoodsName, request.NotifyUrl);
+
+        if (!ModelState.IsValid)
+        {
+            var errors = string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+            _logger.LogWarning("模型验证失败: {Errors}", errors);
+            return BadRequest(ModelState);
+        }
+
+        // 默认使用第一个商户ID（如果未指定）
+        if (string.IsNullOrEmpty(request.MerchantId))
+        {
+            // 从配置中获取默认商户ID
+            var config = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<AbcPaymentConfig>>();
+            request.MerchantId = config.Value.MerchantIds.FirstOrDefault() ?? "";
+        }
+
+        var response = await _paymentService.ProcessAbcScanPayAsync(request);
+        
+        if (response.IsSuccess)
+        {
+            return Ok(response);
+        }
+        else
+        {
+            return BadRequest(response);
+        }
+    }
+
+    /// <summary>
+    /// 农行页面支付（PayReq - 与Demo相同的TrxType，用于验证证书）
+    /// </summary>
+    /// <param name="request">页面支付请求</param>
+    /// <returns>支付响应</returns>
+    [HttpPost("abc-page")]
+    [ProducesResponseType(typeof(PaymentResponse), 200)]
+    public async Task<IActionResult> CreateAbcPagePayment([FromBody] AbcScanPayRequest request)
+    {
+        _logger.LogInformation("收到农行页面支付请求: OrderNo={OrderNo}, Amount={Amount}", 
+            request.OrderNo, request.Amount);
+
+        if (!ModelState.IsValid)
+        {
+            var errors = string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+            _logger.LogWarning("模型验证失败: {Errors}", errors);
+            return BadRequest(ModelState);
+        }
+
+        // 默认使用第一个商户ID
+        if (string.IsNullOrEmpty(request.MerchantId))
+        {
+            var config = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<AbcPaymentConfig>>();
+            request.MerchantId = config.Value.MerchantIds.FirstOrDefault() ?? "";
+        }
+
+        // 使用 PayReq（页面支付）- 与Demo相同
+        var pageRequest = new AbcPagePayRequest
+        {
+            OrderNo = request.OrderNo,
+            Amount = request.Amount,
+            GoodsName = request.GoodsName ?? "测试商品",
+            NotifyUrl = request.NotifyUrl ?? "http://127.0.0.1/Merchant/MerchantResult.aspx",
+            PayTypeID = "ImmediatePay",  // 与Demo一致
+            MerchantId = request.MerchantId  // 传递商户ID
+        };
+
+        var response = await _paymentService.ProcessAbcPagePayAsync(pageRequest);
         
         if (response.IsSuccess)
         {
@@ -326,6 +417,13 @@ public class PaymentController : ControllerBase
     {
         // 按照微信要求的顺序排序参数
         var signData = $"appId={appId}&nonceStr={nonceStr}&package={package}&signType={signType}&timeStamp={timeStamp}";
+
+        // TODO: 根据农行综合收银台的要求，可能需要使用商户证书进行签名
+        // 示例：使用证书签名
+        // var dataBytes = System.Text.Encoding.UTF8.GetBytes(signData);
+        // var signatureBytes = _certificateService.SignData(dataBytes);
+        // return Convert.ToBase64String(signatureBytes);
+        // _logger.LogDebug("微信支付签名完成，使用商户证书: 103881636900016.pfx");
 
         // TODO: 从配置读取 API 密钥
         var apiKey = Environment.GetEnvironmentVariable("WECHAT_API_KEY") ?? "default_key";
